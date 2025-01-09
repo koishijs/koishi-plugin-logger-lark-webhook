@@ -17,7 +17,9 @@ export const Config: z<Config> = z.object({
 
 export const inject = ['http']
 
-export function apply(ctx: Context, config: Config) {
+export async function apply(ctx: Context, config: Config) {
+  const stripAnsi = await import('strip-ansi')
+
   const target: Logger.Target = {
     colors: 0,
     async record(record) {
@@ -33,7 +35,7 @@ export function apply(ctx: Context, config: Config) {
           card: {
             elements: [{
               tag: 'markdown',
-              content: `\`\`\`\n${record.content}\n\`\`\``,
+              content: `\`\`\`\n${stripAnsi.default(record.content)}\n\`\`\``,
             }],
             header: {
               template: record.type === 'error' ? 'red' : 'yellow',
