@@ -7,12 +7,16 @@ export interface Config {
   url: string
   secret: string
   title: string
+  types: Logger.Type[]
 }
 
 export const Config: z<Config> = z.object({
   url: z.string().role('link').description('Lark webhook URL'),
   secret: z.string().role('secret').description('Lark webhook secret'),
   title: z.string(),
+  types: z.array(z.union(['success', 'error', 'warn', 'info', 'debug'])).role('checkbox')
+    .default(['error', 'warn'])
+    .description('Filter log types to send'),
 })
 
 export const inject = ['http']
@@ -24,7 +28,7 @@ export async function apply(ctx: Context, config: Config) {
     colors: 0,
     async record(record) {
       if (record.name === LOGGER_NAME) return
-      if (record.type !== 'error' && record.type !== 'warn') return
+      if (!config.types.includes(record.type)) return
       try {
         const timestamp = '' + Math.round(Date.now() / 1000)
         const sign = createHmac('sha256', `${timestamp}\n${config.secret}`).digest('base64')
