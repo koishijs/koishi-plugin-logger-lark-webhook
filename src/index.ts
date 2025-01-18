@@ -11,7 +11,7 @@ export interface Config {
 }
 
 export const Config: z<Config> = z.object({
-  url: z.string().role('link').description('Lark webhook URL'),
+  url: z.string().role('link').required().description('Lark webhook URL'),
   secret: z.string().role('secret').description('Lark webhook secret'),
   title: z.string(),
   types: z.array(z.union(['success', 'error', 'warn', 'info', 'debug'])).role('checkbox')
@@ -30,11 +30,7 @@ export async function apply(ctx: Context, config: Config) {
       if (record.name === LOGGER_NAME) return
       if (!config.types.includes(record.type)) return
       try {
-        const timestamp = '' + Math.round(Date.now() / 1000)
-        const sign = createHmac('sha256', `${timestamp}\n${config.secret}`).digest('base64')
-        const response = await ctx.http.post(config.url, {
-          timestamp,
-          sign,
+        const data: any = {
           msg_type: 'interactive',
           card: {
             elements: [{
@@ -49,7 +45,12 @@ export async function apply(ctx: Context, config: Config) {
               } : undefined,
             },
           },
-        })
+        }
+        if (config.secret) {
+          data.timestamp = '' + Math.round(Date.now() / 1000)
+          data.sign = createHmac('sha256', `${data.timestamp}\n${config.secret}`).digest('base64')
+        }
+        const response = await ctx.http.post(config.url, data)
         if (response.code) {
           ctx.logger(LOGGER_NAME).error(`[${response.code}] ${response.msg}`)
         }
